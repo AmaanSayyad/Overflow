@@ -94,7 +94,11 @@ graph LR
         DepositModal[DepositModal]
         WithdrawModal[WithdrawModal]
         GameBoard[GameBoard]
+        TargetGrid[TargetGrid]
         BetControls[BetControls]
+        RoundTimer[RoundTimer]
+        ActiveRound[ActiveRound]
+        LiveChart[LiveChart]
         BetHistory[BetHistory]
     end
     
@@ -106,8 +110,9 @@ graph LR
     end
     
     subgraph "Integration Layer"
-        SuiClient[Sui Client]
+        AppAPI[Next.js API]
         SuiWallet[Sui Wallet]
+        SuiClient[Sui Client]
         EventListener[Event Listener]
     end
     
@@ -116,13 +121,17 @@ graph LR
     DepositModal --> BalanceSlice
     WithdrawModal --> BalanceSlice
     GameBoard --> GameSlice
+    TargetGrid --> GameSlice
     BetControls --> GameSlice
+    RoundTimer --> GameSlice
+    ActiveRound --> GameSlice
+    LiveChart --> GameSlice
     BetHistory --> HistorySlice
     
     WalletSlice --> SuiWallet
-    BalanceSlice --> SuiClient
-    GameSlice --> SuiClient
-    
+    BalanceSlice --> AppAPI
+    GameSlice --> AppAPI
+    HistorySlice --> AppAPI
     SuiClient --> EventListener
 ```
 
@@ -544,9 +553,9 @@ The treasury contract manages USDC deposits and withdrawals using Sui Move.
 classDiagram
     class Treasury {
         +UID id
-        +Balance~USDC~ balance
-        +deposit(Coin~USDC~)
-        +withdraw(u64) Coin~USDC~
+        +Balance~T~ balance
+        +deposit(Coin~T~)
+        +withdraw(u64) Coin~T~
         +get_balance() u64
     }
     
@@ -619,9 +628,8 @@ struct WithdrawalEvent has copy, drop {
 ```mermaid
 graph LR
     A[Compile Contract] --> B[Deploy to Testnet]
-    B --> C[Create Treasury Object]
-    C --> D[Share Treasury Object]
-    D --> E[Update Environment Variables]
+    B --> C[Create & Share Treasury]
+    C --> D[Update Environment Variables]
 ```
 
 ## Game Mechanics
