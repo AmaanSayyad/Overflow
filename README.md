@@ -224,17 +224,17 @@ sequenceDiagram
 | **Dev / test** | Jest, Testing Library, fast-check, ESLint, Supabase CLI, ts-node for scripts |
 
 ### Frontend
-- **Next.js 14**: React framework with App Router for server-side rendering
+- **Next.js 16**: React framework with App Router for server-side rendering and API routes
 - **TypeScript**: Type-safe development with strict mode enabled
-- **Tailwind CSS**: Utility-first CSS framework for responsive design
-- **Zustand**: Lightweight state management with minimal boilerplate
+- **Tailwind CSS 4**: Utility-first CSS (PostCSS) for styling
+- **Zustand**: Lightweight state management (store slices in `lib/store/`)
 - **Recharts**: Composable charting library for price visualization
-- **@mysten/dapp-kit**: Official Sui wallet integration with React hooks
+- **@mysten/dapp-kit**: Official Sui wallet integration with React hooks and UI
 
 ### Blockchain (Sui)
 - **Sui** — Layer 1 with object-centric model, high throughput, and Move for secure DeFi
 - **Sui Move** — Treasury contract with events and Coin standard for composability
-- **@mysten/sui.js** — TypeScript SDK for client and transaction building
+- **@mysten/sui** — TypeScript SDK for client and transaction building
 - **USDC on Sui** — Stablecoin for deposits and betting
 
 ### Backend
@@ -248,6 +248,35 @@ sequenceDiagram
 - **fast-check**: Property-based testing library
 - **ESLint**: Code linting with Next.js configuration
 - **TypeScript Compiler**: Type checking and compilation
+
+## Technologies Used (Where in the Project)
+
+Every technology and where it appears in the codebase:
+
+| Technology | Version / Package | Where it's used |
+|------------|------------------|------------------|
+| **Next.js** | 16.1.x | `app/` (App Router, layout, page, API routes under `app/api/`), `next.config.ts` |
+| **React** | 19.2.x | All UI in `app/`, `components/` |
+| **TypeScript** | ^5 | Entire codebase: `tsconfig.json`, all `.ts`/`.tsx` files |
+| **Tailwind CSS** | ^4 | `app/globals.css`, `postcss.config.mjs`; styling across `components/` |
+| **Zustand** | ^5 | `lib/store/` (walletSlice, gameSlice, balanceSlice, historySlice, index); consumed by `app/page.tsx`, `components/` |
+| **@mysten/dapp-kit** | ^0.20 | `app/providers.tsx`, `lib/sui/wallet.ts`, `components/wallet/` (WalletConnect, WalletInfo) |
+| **@mysten/sui** | ^1.45 | `lib/sui/client.ts`, `lib/sui/event-listener.ts`, `lib/sui/config.ts`; RPC, transactions, types |
+| **Sui Move** | — | `sui-contracts/sources/treasury.move`, `Move.toml`, `Move.lock`; on-chain treasury |
+| **Pyth Network** | @pythnetwork/hermes-client ^2.1 | `lib/utils/priceFeed.ts`; live BTC/SUI/SOL prices; referenced in `components/game/LiveChart.tsx` |
+| **Supabase** | @supabase/supabase-js ^2.91 | `lib/supabase/client.ts`; `app/api/balance/*` routes; `lib/balance/synchronization.ts`; `supabase/migrations/`, `supabase/scripts/`, `supabase/__tests__/` |
+| **TanStack React Query** | ^5.90 | Used internally by dapp-kit (providers); optional data fetching |
+| **Recharts** | ^3.6 | `components/game/LiveChart.tsx` for price charts |
+| **d3-scale / d3-shape** | ^4 / ^3.2 | `components/game/LiveChart.tsx` for chart scales and shapes |
+| **Jest** | ^30 | `jest.config.js`, `jest.setup.js`; `**/__tests__/*.test.ts(x)` |
+| **Testing Library** | @testing-library/react ^16, jest-dom ^6 | `components/**/__tests__/`, `app/api/**/__tests__/`, `lib/utils/__tests__/`, `lib/balance/__tests__/`, `supabase/__tests__/` |
+| **fast-check** | ^4.5 | Property-based tests (e.g. in `lib/utils/__tests__/`, `lib/balance/__tests__/`) |
+| **ESLint** | ^9 + eslint-config-next 16 | `eslint.config.mjs`; linting across the repo |
+| **Supabase CLI** | ^2.72 | Local DB tooling; `supabase/` config, migrations, `db:verify`, `db:show-migration` |
+| **ts-node** | ^10 | `supabase/scripts/*.ts`, `scripts/verify-deposit-withdrawal.ts`; running TS scripts |
+| **Node.js** | 18+ | Runtime for Next.js, Jest, Supabase scripts, and CLI scripts |
+
+Environment variables (see [Environment Variables](#environment-variables)) are read in: `lib/sui/config.ts`, `lib/utils/constants.ts`, `lib/supabase/client.ts`, `app/providers.tsx`, `supabase/scripts/`, and `scripts/verify-deposit-withdrawal.ts`.
 
 ## Prerequisites
 
@@ -266,22 +295,18 @@ npm install
 
 ### 2. Set Up Environment Variables
 
-Copy the example environment file and configure it:
+Create your environment file from the template:
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` to configure your settings. The default values point to the deployed testnet contracts.
+Edit `.env` with your values. The template matches the variables used by the app (see [Environment Variables](#environment-variables) for the full list). Required for running the app:
 
-**Required Environment Variables:**
-- `NEXT_PUBLIC_SUI_NETWORK`: Network to use (testnet, mainnet, devnet)
-- `NEXT_PUBLIC_SUI_RPC_ENDPOINT`: Sui RPC endpoint URL
-- `NEXT_PUBLIC_TREASURY_PACKAGE_ID`: Deployed treasury contract package ID
-- `NEXT_PUBLIC_TREASURY_OBJECT_ID`: Treasury shared object ID
-- `NEXT_PUBLIC_USDC_TYPE`: USDC token type on Sui
-- `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase anonymous key
+- **Sui:** `NEXT_PUBLIC_SUI_NETWORK`, `NEXT_PUBLIC_SUI_RPC_ENDPOINT`, `NEXT_PUBLIC_TREASURY_PACKAGE_ID`, `NEXT_PUBLIC_TREASURY_OBJECT_ID`, `NEXT_PUBLIC_USDC_TYPE`
+- **Supabase:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+Optional: `NEXT_PUBLIC_APP_NAME`, `NEXT_PUBLIC_ROUND_DURATION`, `NEXT_PUBLIC_PRICE_UPDATE_INTERVAL`, `NEXT_PUBLIC_CHART_TIME_WINDOW`.
 
 ### 3. Set Up Supabase Database
 
@@ -708,9 +733,10 @@ The application supports multiple Sui networks. Configure via `NEXT_PUBLIC_SUI_N
 
 | Variable | Description | Default |
 |----------|-------------|---------|
+| `NEXT_PUBLIC_APP_NAME` | Application display name | `Overflow` |
 | `NEXT_PUBLIC_ROUND_DURATION` | Round duration in seconds | `30` |
 | `NEXT_PUBLIC_PRICE_UPDATE_INTERVAL` | Price update interval in ms | `1000` |
-| `NEXT_PUBLIC_CHART_TIME_WINDOW` | Chart time window in ms | `300000` |
+| `NEXT_PUBLIC_CHART_TIME_WINDOW` | Chart time window in ms (e.g. 300000 = 5 min) | `300000` |
 
 ## Deploying Your Own Treasury Contract
 
